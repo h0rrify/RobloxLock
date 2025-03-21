@@ -1,0 +1,85 @@
+-- created by horrify
+-- Aimbot Script for Roblox with Raycasting and Maximum Range (Made by @H2rrify on discord)
+
+-- Settings
+local aimbotEnabled = true    -- Enable or disable the aimbot
+local maxRange = 900          -- Maximum distance for the aimbot to lock onto a target (100 yards = 900 studs)
+local smoothness = 0.1        -- How smoothly the camera follows the target (lower is faster)
+local keyToToggle = Enum.KeyCode.X -- The key to toggle aimbot ('X' key by default)
+ -- Made by HORRIFY (Totally not skidder)
+-- Variables
+local player = game.Players.LocalPlayer
+local camera = game.Workspace.CurrentCamera
+local mouse = player:GetMouse()
+
+-- Function to find the closest enemy
+local function getClosestEnemy()
+    local closestEnemy = nil
+    local shortestDistance = maxRange -- Limit the distance to maxRange (900 studs for 100 yards)
+
+    for _, otherPlayer in ipairs(game.Players:GetPlayers()) do
+        -- Skip if it's the player itself
+        if otherPlayer == player then continue end
+
+        local character = otherPlayer.Character
+        if not character or not character:FindFirstChild("HumanoidRootPart") then continue end
+        
+        local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+        local distance = (humanoidRootPart.Position - camera.CFrame.Position).magnitude
+        
+        -- Only consider players within the maximum range
+        if distance < shortestDistance then
+            closestEnemy = humanoidRootPart
+            shortestDistance = distance
+        end
+    end
+    
+    return closestEnemy
+end
+
+-- Function to check if there is a clear line of sight to the enemy (no walls)
+local function hasLineOfSightToEnemy(enemy)
+    local enemyPosition = enemy.Position
+    local ray = Ray.new(camera.CFrame.Position, enemyPosition - camera.CFrame.Position)
+    
+    -- Cast the ray and check if it hits something
+    local hitPart, hitPosition = workspace:FindPartOnRay(ray, player.Character, false, true)
+    
+    -- If the ray hits something and it's not the enemy, we consider it blocked
+    return hitPart == nil or hitPart.Parent == enemy.Parent
+end
+
+-- Function to aim at the closest enemy
+local function aimAtEnemy()
+    if not aimbotEnabled then return end
+
+    -- Get the closest enemy
+    local closestEnemy = getClosestEnemy()
+    
+    if closestEnemy then
+        -- Check if there's a clear line of sight to the enemy
+        if hasLineOfSightToEnemy(closestEnemy) then
+            -- Smoothly move the camera to aim at the enemy
+            local enemyPosition = closestEnemy.Position
+            local directionToEnemy = (enemyPosition - camera.CFrame.Position).unit
+            
+            -- Calculate the new camera CFrame
+            local targetCFrame = CFrame.new(camera.CFrame.Position, enemyPosition)
+            camera.CFrame = camera.CFrame:Lerp(targetCFrame, smoothness)
+        end
+    end
+end
+
+-- Toggle aimbot on or off using the specified key, Dont Spam it could break
+game:GetService("UserInputService").InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == keyToToggle then
+        aimbotEnabled = not aimbotEnabled
+        print("Aimbot " .. (aimbotEnabled and "Enabled" or "Disabled"))
+    end
+end)
+
+-- Continuously aim at the closest enemy when the aimbot is enabled
+game:GetService("RunService").Heartbeat:Connect(function()
+    aimAtEnemy()
+end)
