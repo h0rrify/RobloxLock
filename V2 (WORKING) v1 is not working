@@ -1,0 +1,66 @@
+loadstring([[
+-- Aimbot Script for Roblox (Snappy Version, Head Targeting)
+local aimbotEnabled = true
+local maxRange = 900
+local keyToToggle = Enum.KeyCode.X
+local player = game.Players.LocalPlayer
+local camera = game.Workspace.CurrentCamera
+local mouse = player:GetMouse()
+
+local function getPredictedPosition(target, deltaTime)
+    local head = target:FindFirstChild("Head")
+    if head then
+        local velocity = target.HumanoidRootPart.Velocity
+        local predictedPosition = head.Position + velocity * deltaTime
+        return predictedPosition
+    end
+    return nil
+end
+
+local function getClosestEnemy()
+    local closestEnemy = nil
+    local shortestDistance = maxRange
+    for _, otherPlayer in ipairs(game.Players:GetPlayers()) do
+        if otherPlayer == player then continue end
+        local character = otherPlayer.Character
+        if not character or not character:FindFirstChild("Head") then continue end
+        local head = character:FindFirstChild("Head")
+        local distance = (head.Position - camera.CFrame.Position).magnitude
+        if distance < shortestDistance then
+            closestEnemy = head
+            shortestDistance = distance
+        end
+    end
+    return closestEnemy
+end
+
+local function hasLineOfSightToEnemy(enemy)
+    local enemyPosition = enemy.Position
+    local ray = Ray.new(camera.CFrame.Position, enemyPosition - camera.CFrame.Position)
+    local hitPart, hitPosition = workspace:FindPartOnRay(ray, player.Character, false, true)
+    return hitPart == nil or hitPart.Parent == enemy.Parent
+end
+
+local function aimAtPredictedPosition()
+    if not aimbotEnabled then return end
+    local closestEnemy = getClosestEnemy()
+    if closestEnemy then
+        local predictedPosition = getPredictedPosition(closestEnemy.Parent, 0.1)
+        if hasLineOfSightToEnemy(closestEnemy) then
+            camera.CFrame = CFrame.new(camera.CFrame.Position, predictedPosition)
+        end
+    end
+end
+
+game:GetService("UserInputService").InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == keyToToggle then
+        aimbotEnabled = not aimbotEnabled
+        print("Aimbot " .. (aimbotEnabled and "Enabled" or "Disabled"))
+    end
+end)
+
+game:GetService("RunService").Heartbeat:Connect(function()
+    aimAtPredictedPosition()
+end)
+]])()
